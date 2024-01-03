@@ -1,4 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QTableWidget, QTableView, QTableWidgetItem
+import time
 import os
 import h5py as h5
 import spikeinterface.full as si
@@ -88,17 +89,24 @@ class IOTab(QWidget):
         self.metrics_file = QFileDialog.getSaveFileName(self, "Choose the name of the metrics file", filter="*.h5")[0]
         if not self.metrics_file.endswith(".h5"):
             self.metrics_file += ".h5"
+        
+        time.sleep(2)
 
         with h5.File(self.metrics_file, "w") as h5_file:
 
             for cluster_id in self.cluster_ids:
                 # Create a group for each cluster
                 h5_file.create_group(str(cluster_id))
+            
 
             stabilities = metrics.compute_stability(self.sorting) 
+
+            autocorrs = metrics.compute_autocorrelation(self.sorting)
+
             for cluster_id in self.cluster_ids:
                 cluster_group = h5_file[str(cluster_id)]
                 cluster_group.create_dataset("stability", data=stabilities[cluster_id])
+                cluster_group.create_dataset("autocorr", data=autocorrs[cluster_id])
             
             print("Metrics computed and saved to ", self.metrics_file)
 

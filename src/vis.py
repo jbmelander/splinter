@@ -31,7 +31,7 @@ class VisualizationTab(QWidget):
         self.cluster_combo.currentTextChanged.connect(self.update_plot)
 
         self.plot_combo = QComboBox()
-        self.plot_combo.addItems(["Stability", "ISI"])
+        self.plot_combo.addItems(["stability", "autocorr"])
         self.plot_combo.currentTextChanged.connect(self.update_plot)
         
         self.figure, self.axes = plt.subplots(2, 2)
@@ -75,16 +75,22 @@ class VisualizationTab(QWidget):
         current_cluster = self.cluster_combo.currentText()
         current_plot = self.plot_combo.currentText()
 
-        if current_plot == "Stability":
-            self.axes[0,0].clear()
+        # if current_plot == "stability":
+        self.axes[0,0].clear()
 
-            self.axes[0,0].plot(self.h5_file[current_cluster]["stability"][:])
-            self.axes[0,0].set_title("Stability")
+        self.axes[0,0].plot(self.h5_file[current_cluster]["stability"][:])
+        self.axes[0,0].set_title("Stability")
 
-            self.canvas.draw()
+        self.canvas.draw()
 
-        elif current_plot == "ISI":
-            pass
+        # elif current_plot == "autocorr":
+        self.axes[0,1].clear()
+
+        self.axes[0,1].plot(self.h5_file[current_cluster]["autocorr"][1:])
+        self.axes[0,1].set_title("autocorr")
+
+        self.canvas.draw()
+
 
 
 
