@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QTableWidget, QTableView, QTableWidgetItem
-import time
+import numpy as np
 import os
 import h5py as h5
 import spikeinterface.full as si
@@ -63,10 +63,9 @@ class IOTab(QWidget):
         self.parse_directory()
 
     def parse_directory(self):
-        spike_file = glob.glob(os.path.join(self.directory_path, "*/spikes.npy"))
-        self.sorting_dir = os.path.dirname(spike_file[0])
-
-        waveforms_file = glob.glob(os.path.join(self.directory_path, "*/sparsity.json"))
+        
+        waveforms_file = glob.glob(os.path.join(self.directory_path, "sparsity.json"))
+        print(waveforms_file)
         self.waveforms_dir = os.path.dirname(waveforms_file[0])
 
         self.load_SI_data()
@@ -89,24 +88,57 @@ class IOTab(QWidget):
         self.metrics_file = QFileDialog.getSaveFileName(self, "Choose the name of the metrics file", filter="*.h5")[0]
         if not self.metrics_file.endswith(".h5"):
             self.metrics_file += ".h5"
-        
-        time.sleep(2)
 
         with h5.File(self.metrics_file, "w") as h5_file:
 
             for cluster_id in self.cluster_ids:
                 # Create a group for each cluster
                 h5_file.create_group(str(cluster_id))
-            
 
             stabilities = metrics.compute_stability(self.sorting) 
 
-            autocorrs = metrics.compute_autocorrelation(self.sorting)
-
+            acs = {}
             for cluster_id in self.cluster_ids:
                 cluster_group = h5_file[str(cluster_id)]
                 cluster_group.create_dataset("stability", data=stabilities[cluster_id])
-                cluster_group.create_dataset("autocorr", data=autocorrs[cluster_id])
+
+                spike_train = self.sorting.get_unit_spike_train(cluster_id)
+                window_size = 0.1
+                
+                window_size = int(window_size * self.sorting.get_sampling_frequency())
+
+                bin_size = 0.001
+                bin_size = int(bin_size * self.sorting.get_sampling_frequency())
+
+                ac = si.compute_autocorrelogram_from_spiketrain(spike_train, window_size, bin_size)
+                cluster_group.create_dataset("si_autocorr", data=ac)
+
+                window_size = 0.02
+                
+                window_size = int(window_size * self.sorting.get_sampling_frequency())
+
+                bin_size = 0.0001
+                bin_size = int(bin_size * self.sorting.get_sampling_frequency())
+
+                ac = si.compute_autocorrelogram_from_spiketrain(spike_train, window_size, bin_size)
+                cluster_group.create_dataset("si_autocorr_hires", data=ac)
+
+                waveforms = self.waveforms.get_waveforms(cluster_id)
+
+                mean_waveform = np.mean(waveforms, axis=0)
+                print(mean_waveform)
+                print(mean_waveform.shape)
+
+                max_point = np.where(np.abs(mean_waveform) == np.max(np.abs(mean_waveform)))
+
+                print(max_point)
+                max_t, max_ch = max_point[0], max_point[1]
+
+                print(max_t, max_ch)
+                cluster_group.create_dataset("mean_waveform", data=mean_waveform[:, max_ch])
+                cluster_group.create_dataset("waveforms", data=waveforms[:, :, max_ch])
+
+
             
             print("Metrics computed and saved to ", self.metrics_file)
 

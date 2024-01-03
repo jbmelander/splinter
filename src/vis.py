@@ -9,6 +9,7 @@ import spikeinterface.full as si
 import glob
 import metrics
 
+PLOT_OPTIONS = ['stability', 'si_autocorr', 'si_autocorr_hires', 'waveforms']
 class VisualizationTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -18,6 +19,7 @@ class VisualizationTab(QWidget):
         self.first_row = QHBoxLayout()
         self.second_row = QHBoxLayout()
         self.third_row = QHBoxLayout()
+        self.fourth_row = QHBoxLayout()
 
         self.load_h5_push = QPushButton("Load h5", self)
         self.load_h5_push.clicked.connect(self.load_h5)
@@ -29,25 +31,45 @@ class VisualizationTab(QWidget):
         self.cluster_combo = QComboBox()
         self.second_row.addWidget(self.cluster_combo)
         self.cluster_combo.currentTextChanged.connect(self.update_plot)
-
-        self.plot_combo = QComboBox()
-        self.plot_combo.addItems(["stability", "autocorr"])
-        self.plot_combo.currentTextChanged.connect(self.update_plot)
         
-        self.figure, self.axes = plt.subplots(2, 2)
-        self.canvas = FigureCanvas(self.figure)
         
+        self.figures = [] 
+        self.axes = []
+        self.canvi = [] # WTF is the plural of canvas
+        self.combos = []
+        self.columns = []
+
+        for i in range(2):
+            for j in range(2):
+                plot_column = QVBoxLayout()
+                self.figures.append(Figure())
+                self.axes.append(self.figures[-1].add_subplot(111))
+                self.canvi.append(FigureCanvas(self.figures[-1]))
+                self.combos.append(QComboBox())
+                self.combos[-1].addItems(PLOT_OPTIONS)
+                self.combos[-1].currentTextChanged.connect(self.update_plot)
+
+                plot_column.addWidget(self.combos[-1])
+                plot_column.addWidget(self.canvi[-1])
+
+                self.columns.append(plot_column)
 
 
-        self.third_row.addWidget(self.canvas)
 
-        self.second_row.addWidget(self.plot_combo)
+        
+        self.third_row.addLayout(self.columns[0])
+        self.third_row.addLayout(self.columns[1])
 
+        self.fourth_row.addLayout(self.columns[2])
+        self.fourth_row.addLayout(self.columns[3])
+
+        # self.second_row.addWidget(self.plot_combo)
 
 
         layout.addLayout(self.first_row)
         layout.addLayout(self.second_row)
         layout.addLayout(self.third_row)
+        layout.addLayout(self.fourth_row)
         self.setLayout(layout)
 
     def load_h5(self):
@@ -73,24 +95,53 @@ class VisualizationTab(QWidget):
 
     def update_plot(self):
         current_cluster = self.cluster_combo.currentText()
-        current_plot = self.plot_combo.currentText()
+        
+        for i in range(2):
+            for j in range(2):
+                current_plot = self.combos[i*2+j].currentText()
+                self.axes[i*2+j].clear()
+
+                if current_plot == "stability":
+                    self.axes[i*2+j].plot(self.h5_file[current_cluster]["stability"][:])
+                    self.axes[i*2+j].set_title("Stability")
+                elif current_plot == "si_autocorr":
+                    self.axes[i*2+j].plot(self.h5_file[current_cluster]["si_autocorr"][:])
+                    self.axes[i*2+j].set_title("autocorr")
+                elif current_plot == "si_autocorr_hires":
+                    self.axes[i*2+j].plot(self.h5_file[current_cluster]["si_autocorr_hires"][:])
+                    self.axes[i*2+j].set_title("hi_res")
+                elif current_plot == "waveforms":
+
+
+                    all_waveforms = self.h5_file[current_cluster]["waveforms"][::10]
+                    print(all_waveforms.shape)
+                    mean_waveform = np.mean(all_waveforms, axis=0)
+                    print(mean_waveform.shape)
+                    for _waveform in all_waveforms:
+                        self.axes[i*2+j].plot(_waveform, 'k', alpha=0.01)
+                    self.axes[i*2+j].plot(self.h5_file[current_cluster]["mean_waveform"][:], 'r')
+                    self.axes[i*2+j].set_title("waveforms")
+
+                self.canvi[i*2+j].draw()
+
+
 
         # if current_plot == "stability":
-        self.axes[0,0].clear()
+        #     self.axes[0,0].clear()
 
-        self.axes[0,0].plot(self.h5_file[current_cluster]["stability"][:])
-        self.axes[0,0].set_title("Stability")
+        #     self.axes[0,0].plot(self.h5_file[current_cluster]["stability"][:])
+        #     self.axes[0,0].set_title("Stability")
 
-        self.canvas.draw()
+        #     self.canvas.draw()
 
         # elif current_plot == "autocorr":
-        self.axes[0,1].clear()
+        #     self.axes[0,0].clear()
 
-        self.axes[0,1].plot(self.h5_file[current_cluster]["autocorr"][1:])
-        self.axes[0,1].set_title("autocorr")
+        #     self.axes[0,0].plot(self.h5_file[current_cluster]["autocorr"][:])
+        #     self.axes[0,0].set_title("Stability")
 
-        self.canvas.draw()
-
+        #     self.canvas.draw()
+        #     pass
 
 
 

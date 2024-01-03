@@ -1,4 +1,7 @@
 Other metrics
-Means of "flagging" specific cells
-Look into waveform extractor
-Combining clusters?
+Curation
+Waveform extractor
+Combining clusters
+Filling in partial-split cells
+Motion correction / drift
+Similarity metric (in Fourier)
